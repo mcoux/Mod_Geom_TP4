@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Experimental.GlobalIllumination;
 using System.Collections.Generic;
+using System.Runtime.InteropServices;
 
 public class Exo_1 : MonoBehaviour
 {
@@ -71,6 +72,28 @@ public class Exo_1 : MonoBehaviour
 
 
         }
+
+        
+    }
+
+    private Dictionary<Vector3, List<Vector3>> createRepPoints()
+    {
+        float areaDim = dim / epsilon;
+        List<Vector3> currentPointlist;
+        Dictionary<Vector3,List<Vector3>> pointGroups = new Dictionary<Vector3,List<Vector3>>();
+        foreach (Vector3 point in pointList) 
+        { 
+            currentPointlist = new List<Vector3>();
+            foreach(Vector3 vertex in pointList)
+            {
+                if( (vertex.x > point.x && vertex.x< point.x + areaDim) && (vertex.y > point.y && vertex.y < point.y + areaDim) && (vertex.z > point.z && vertex.z < point.z + areaDim))
+                {
+                    currentPointlist.Add(vertex);
+                }
+            }
+            pointGroups.Add(point,currentPointlist);
+        }
+        return pointGroups;
     }
 
     private void OnDrawGizmos()
