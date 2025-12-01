@@ -62,7 +62,7 @@ public class Exo_1 : MonoBehaviour
             {
                 for (int k = 0; k < epsilon; k++)
                 {
-                    newPoint = new Vector3(-subDim + (subDim / epsilon) + subDim * i * 2 / epsilon, -subDim + (subDim / epsilon) + subDim * j * 2 / epsilon, -subDim + (subDim / epsilon) + subDim * k * 2 / epsilon);
+                    newPoint = new Vector3(-subDim  + dim * i  / epsilon, -subDim + dim * j / epsilon, -subDim + dim * k / epsilon);
                     newPoint += transform.position;
                  
                     pointList.Add(newPoint);
@@ -78,7 +78,6 @@ public class Exo_1 : MonoBehaviour
         for (int i = 0; i < pointList.Count; i++)
         {
             //Gizmos.color = new UnityEngine.Color(255/(i+1), 255 / (i + 1), 255 / (i + 1));
-            //Gizmos.DrawCube(pointList[i], new Vector3(dim / epsilon,dim / epsilon, dim / epsilon));
             Gizmos.DrawIcon(pointList[i], "p");
         }
 
