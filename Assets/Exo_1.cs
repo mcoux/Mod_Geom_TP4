@@ -18,7 +18,10 @@ public class Exo_1 : MonoBehaviour
         
         createBoundingBox(out dim);
         subDivide();
-        
+        Dictionary<Vector3, List<Vector3>> pointGroups = createPointsGroup();
+        pointList = regroupPoints(pointGroups);
+        Debug.Log(pointList.Count);
+        redrawMesh();
         origin += transform.position;
     }
 
@@ -76,32 +79,67 @@ public class Exo_1 : MonoBehaviour
         
     }
 
-    private Dictionary<Vector3, List<Vector3>> createRepPoints()
+    private Dictionary<Vector3, List<Vector3>> createPointsGroup()
     {
         float areaDim = dim / epsilon;
+        Debug.Log(areaDim);
         List<Vector3> currentPointlist;
         Dictionary<Vector3,List<Vector3>> pointGroups = new Dictionary<Vector3,List<Vector3>>();
+        Vector3 currentVertex;
         foreach (Vector3 point in pointList) 
-        { 
+        {
             currentPointlist = new List<Vector3>();
-            foreach(Vector3 vertex in pointList)
+            foreach(Vector3 vertex in mesh.vertices)
             {
-                if( (vertex.x > point.x && vertex.x< point.x + areaDim) && (vertex.y > point.y && vertex.y < point.y + areaDim) && (vertex.z > point.z && vertex.z < point.z + areaDim))
+                currentVertex = vertex + transform.position;
+                if ( (currentVertex.x > point.x && currentVertex.x < point.x + areaDim) && (currentVertex.y > point.y && currentVertex.y < point.y + areaDim) && (currentVertex.z > point.z && currentVertex.z < point.z + areaDim))
                 {
                     currentPointlist.Add(vertex);
+                    
                 }
             }
+            //Debug.Log(currentPointlist.Count);
             pointGroups.Add(point,currentPointlist);
         }
         return pointGroups;
     }
+
+    private List<Vector3> regroupPoints(Dictionary<Vector3, List<Vector3>> pointGroups)
+    {
+        List<Vector3> newPoints = new List<Vector3>();
+        Vector3 avg;
+
+        foreach( var (origin, vertices)  in pointGroups)
+        {
+            avg = Vector3.zero;
+            foreach(Vector3 vertex in vertices)
+            {
+                avg += vertex;
+            }
+            avg.x /= vertices.Count;
+            avg.y /= vertices.Count;
+            avg.z /= vertices.Count;
+
+            newPoints.Add(avg);
+        }
+
+        return newPoints;
+    }
+
+    private void redrawMesh()
+    {
+        mesh.vertices = pointList.ToArray();
+    }
+
+
 
     private void OnDrawGizmos()
     {
         for (int i = 0; i < pointList.Count; i++)
         {
             //Gizmos.color = new UnityEngine.Color(255/(i+1), 255 / (i + 1), 255 / (i + 1));
-            Gizmos.DrawIcon(pointList[i], "p");
+            //Debug.Log(pointList[i]);
+            Gizmos.DrawIcon(pointList[i] + transform.position, "p");
         }
 
     }
