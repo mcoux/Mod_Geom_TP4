@@ -1,8 +1,10 @@
 using System.Collections.Generic;
+using System.Collections.Generic;
+using System.Linq;
+using System.Runtime.InteropServices;
 using UnityEngine;
 using UnityEngine.Experimental.GlobalIllumination;
-using System.Collections.Generic;
-using System.Runtime.InteropServices;
+using UnityEngine.UIElements;
 
 public class Exo_1 : MonoBehaviour
 {
@@ -11,6 +13,8 @@ public class Exo_1 : MonoBehaviour
     Vector3 origin;
     float dim;
     List<Vector3> pointList = new List<Vector3>();
+    List<Vector3> newPoints = new List<Vector3>();
+    Dictionary<int, List<int>> groupIndexes = new Dictionary<int, List<int>>();
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
     {
@@ -22,6 +26,7 @@ public class Exo_1 : MonoBehaviour
         pointList = regroupPoints(pointGroups);
         Debug.Log(pointList.Count);
         redrawMesh();
+      
         origin += transform.position;
     }
 
@@ -82,24 +87,36 @@ public class Exo_1 : MonoBehaviour
     private Dictionary<Vector3, List<Vector3>> createPointsGroup()
     {
         float areaDim = dim / epsilon;
-        Debug.Log(areaDim);
         List<Vector3> currentPointlist;
+        List<int> indexesList;
         Dictionary<Vector3,List<Vector3>> pointGroups = new Dictionary<Vector3,List<Vector3>>();
         Vector3 currentVertex;
+        float margin = 1e-10f;
+        int index = 0;
         foreach (Vector3 point in pointList) 
         {
             currentPointlist = new List<Vector3>();
-            foreach(Vector3 vertex in mesh.vertices)
+            indexesList = new List<int>();
+            
+
+            for(int i = 0; i < mesh.vertices.Length; i++)
             {
-                currentVertex = vertex + transform.position;
-                if ( (currentVertex.x > point.x && currentVertex.x < point.x + areaDim) && (currentVertex.y > point.y && currentVertex.y < point.y + areaDim) && (currentVertex.z > point.z && currentVertex.z < point.z + areaDim))
+                
+                currentVertex = mesh.vertices[i] + transform.position;
+                if ((currentVertex.x >= point.x  && currentVertex.x <= point.x + areaDim) && (currentVertex.y >= point.y  && currentVertex.y <= point.y + areaDim) && (currentVertex.z >= point.z  && currentVertex.z <= point.z + areaDim))
                 {
-                    currentPointlist.Add(vertex);
-                    
+                    currentPointlist.Add(mesh.vertices[i]);
+                    indexesList.Add(i);
                 }
             }
             //Debug.Log(currentPointlist.Count);
-            pointGroups.Add(point,currentPointlist);
+            if(currentPointlist.Count != 0)
+            {
+                pointGroups.Add(point, currentPointlist);
+                groupIndexes.Add(index, indexesList);
+                index++;
+
+            }
         }
         return pointGroups;
     }
@@ -116,6 +133,7 @@ public class Exo_1 : MonoBehaviour
             {
                 avg += vertex;
             }
+
             avg.x /= vertices.Count;
             avg.y /= vertices.Count;
             avg.z /= vertices.Count;
@@ -128,21 +146,89 @@ public class Exo_1 : MonoBehaviour
 
     private void redrawMesh()
     {
-        mesh.vertices = pointList.ToArray();
-    }
-
-
-
-    private void OnDrawGizmos()
-    {
+        List<int> currentTriangle = new List<int>();
+        List<int> newTriangle = new List<int>();
+        List<List<int>> newTrianglesList = new List<List<int>>();
         for (int i = 0; i < pointList.Count; i++)
         {
-            //Gizmos.color = new UnityEngine.Color(255/(i+1), 255 / (i + 1), 255 / (i + 1));
-            //Debug.Log(pointList[i]);
-            Gizmos.DrawIcon(pointList[i] + transform.position, "p");
+            for (int j = 0; j < mesh.triangles.Length; j += 3)
+            {
+                currentTriangle = new List<int>();
+                newTriangle = new List<int>();
+                currentTriangle.Add(mesh.triangles[j]);
+                currentTriangle.Add(mesh.triangles[j+1]);
+                currentTriangle.Add(mesh.triangles[j+2]);
+                if (groupIndexes.ContainsKey(i))
+                {
+                    if (groupIndexes[i].Contains(mesh.triangles[j]) || groupIndexes[i].Contains(mesh.triangles[j + 1]) || groupIndexes[i].Contains(mesh.triangles[j + 2]))
+                    {
+                        newTriangle.Add(getIndexOfAvgPoint(currentTriangle[0]));
+                        newTriangle.Add(getIndexOfAvgPoint(currentTriangle[1]));
+                        newTriangle.Add(getIndexOfAvgPoint(currentTriangle[2]));
+                        if (!newTrianglesList.Contains(newTriangle) && newTriangle[0] != newTriangle[1] && newTriangle[2] != newTriangle[1] && newTriangle[0] != newTriangle[2])
+                        {
+                            newTrianglesList.Add(newTriangle);
+                        }
+                    }
+                }
+                
+
+            }
         }
 
+        int[] newTrianglesArray = new int[newTrianglesList.Count*3];
+        List<int> tempList = new List<int>();
+        foreach (List<int> triangle in newTrianglesList) 
+        {
+            tempList.Add(triangle[0]);
+            tempList.Add(triangle[1]);
+            tempList.Add(triangle[2]);
+
+
+        }
+        newTrianglesArray = tempList.ToArray();
+
+        Mesh newMesh = new Mesh();
+        newMesh.vertices = pointList.ToArray();
+        newMesh.triangles = newTrianglesArray;
+
+        MeshFilter filter = GetComponent<MeshFilter>();
+        filter.mesh = newMesh;
+
+
     }
+
+
+    private int getIndexOfAvgPoint(int index)
+    {
+        int pointIndex = -1;
+
+        int i = 0;
+
+
+        foreach (var (pIndex, indexList) in groupIndexes)
+        {
+            if (indexList.Contains(index))
+            {
+                pointIndex = pIndex;
+                break;
+            }
+        } 
+        //Y a 64 zones avant le tri.
+        return pointIndex;
+    }
+
+
+    //private void OnDrawGizmos()
+    //{
+    //    for (int i = 0; i < pointList.Count; i++)
+    //    {
+    //        //Gizmos.color = new UnityEngine.Color(255/(i+1), 255 / (i + 1), 255 / (i + 1));
+    //        //Debug.Log(pointList[i]);
+    //        Gizmos.DrawIcon(pointList[i] + transform.position, "p");
+    //    }
+
+    //}
 
 
 
